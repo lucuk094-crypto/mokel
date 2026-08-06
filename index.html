@@ -907,6 +907,53 @@
             line-height: 1.5;
         }
 
+        /* Export & Share Features */
+        .share-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .btn-share {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--surface-border);
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-share:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-share.primary {
+            background: linear-gradient(135deg, var(--warning), #ff9500);
+            border-color: var(--warning);
+            color: #000;
+        }
+
+        .btn-share.primary:hover {
+            box-shadow: 0 4px 12px rgba(255, 184, 0, 0.3);
+        }
+
+        /* Export Canvas (hidden) */
+        #export-canvas {
+            position: absolute;
+            left: -9999px;
+            background: var(--bg);
+        }
+
     </style>
 </head>
 <body>
@@ -1187,6 +1234,18 @@
                     <div class="chart-title">📈 Progress Mingguan</div>
                     <div class="bar-chart" id="weekly-chart"></div>
                 </div>
+                
+                <div class="share-actions">
+                    <button class="btn-share" onclick="exportTrackerImage()">
+                        📸 Export Gambar
+                    </button>
+                    <button class="btn-share" onclick="shareWeeklyReport()">
+                        📊 Laporan Mingguan
+                    </button>
+                    <button class="btn-share primary" onclick="shareToWA()">
+                        💬 Share ke WA
+                    </button>
+                </div>
             </div>
 
             <div id="tracker-container" style="flex: 1; overflow-y: auto;"></div>
@@ -1241,6 +1300,8 @@
             </div>
         </div>
     </div>
+
+    <canvas id="export-canvas"></canvas>
 
     <script>
         let simData = { name: '', total: 0, guilt: 0, risk: 0, loss: 0 };
@@ -1926,6 +1987,113 @@
             document.querySelectorAll('.day-box.today').forEach(el => {
                 el.addEventListener('click', openNoteModal);
             });
+        }
+
+        // Export & Share Features
+        function exportTrackerImage() {
+            // Simple text-based export (bisa diganti dengan canvas/html2canvas)
+            const history = getHistory();
+            const cleanDays = history.filter(h => h.status !== 'Tumbang Oleh Nafsu 😈').length;
+            const totalDays = history.length;
+            const progress = totalDays > 0 ? Math.round((cleanDays / totalDays) * 100) : 0;
+            
+            const text = `
+🕌 TRACKER PUASA RAMADAN 🕌
+
+📊 Statistik:
+✅ Hari Bersih: ${cleanDays}
+❌ Pelanggaran: ${totalDays - cleanDays}
+📈 Progress: ${progress}%
+
+${currentGoal ? `🎯 Target: ${currentGoal.target}` : ''}
+
+📅 Generated: ${new Date().toLocaleDateString('id-ID')}
+💪 Keep going! Semangat!
+            `.trim();
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(text).then(() => {
+                alert('📋 Statistik berhasil di-copy!\n\nPaste di chat untuk share.');
+                if (navigator.vibrate) navigator.vibrate(50);
+            }).catch(() => {
+                alert('❌ Gagal copy. Browser tidak support.');
+            });
+        }
+
+        function shareWeeklyReport() {
+            const history = getHistory();
+            const now = new Date();
+            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            const weekHistory = history.filter(h => {
+                const hDate = new Date(h.date);
+                return hDate >= oneWeekAgo && hDate <= now;
+            });
+            
+            const cleanDays = weekHistory.filter(h => h.status !== 'Tumbang Oleh Nafsu 😈').length;
+            const violations = weekHistory.filter(h => h.status === 'Tumbang Oleh Nafsu 😈');
+            
+            // Count violation types
+            const violationTypes = {};
+            violations.forEach(v => {
+                violationTypes[v.name] = (violationTypes[v.name] || 0) + 1;
+            });
+            
+            let report = `📊 *LAPORAN MINGGUAN RAMADAN*\n\n`;
+            report += `📅 Periode: ${oneWeekAgo.toLocaleDateString('id-ID')} - ${now.toLocaleDateString('id-ID')}\n\n`;
+            report += `📈 *Statistik:*\n`;
+            report += `✅ Hari Bersih: ${cleanDays}/7\n`;
+            report += `❌ Pelanggaran: ${violations.length}\n`;
+            report += `📊 Tingkat Ketahanan: ${Math.round((cleanDays / 7) * 100)}%\n\n`;
+            
+            if (Object.keys(violationTypes).length > 0) {
+                report += `⚠️ *Pelanggaran Terbanyak:*\n`;
+                Object.entries(violationTypes)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 3)
+                    .forEach(([name, count]) => {
+                        report += `• ${name}: ${count}x\n`;
+                    });
+                report += `\n`;
+            }
+            
+            report += `💪 *Evaluasi:*\n`;
+            if (cleanDays >= 6) {
+                report += `🔥 Luar biasa! Pertahankan!`;
+            } else if (cleanDays >= 4) {
+                report += `👍 Bagus! Tingkatkan lagi!`;
+            } else {
+                report += `💪 Jangan menyerah! Minggu depan pasti lebih baik!`;
+            }
+            
+            const encoded = encodeURIComponent(report);
+            window.open(`https://wa.me/6287818011099?text=${encoded}`, '_blank');
+        }
+
+        function shareToWA() {
+            const history = getHistory();
+            const cleanDays = history.filter(h => h.status !== 'Tumbang Oleh Nafsu 😈').length;
+            const violations = history.filter(h => h.status === 'Tumbang Oleh Nafsu 😈');
+            const totalDays = history.length;
+            const progress = totalDays > 0 ? Math.round((cleanDays / totalDays) * 100) : 0;
+            
+            let message = `🕌 *TRACKER PUASA RAMADAN* 🕌\n\n`;
+            message += `📊 *Statistik Saya:*\n`;
+            message += `✅ Hari Bersih: ${cleanDays} hari\n`;
+            message += `❌ Pelanggaran: ${violations.length}x\n`;
+            message += `📈 Progress: ${progress}%\n\n`;
+            
+            if (currentGoal) {
+                const goalProgress = Math.min((cleanDays / currentGoal.cleanDaysTarget) * 100, 100);
+                message += `🎯 *Target:* ${currentGoal.target}\n`;
+                message += `📊 Pencapaian: ${Math.round(goalProgress)}%\n\n`;
+            }
+            
+            message += `💪 Semangat menjalankan ibadah Ramadan!\n\n`;
+            message += `_Track puasamu juga di Eksekusi Pemokelan_`;
+            
+            const encoded = encodeURIComponent(message);
+            window.open(`https://wa.me/?text=${encoded}`, '_blank');
         }
 
         function checkPrayerTimeReminders() {
