@@ -76,21 +76,15 @@
             position: fixed;
             inset: 0;
             z-index: 1;
-            opacity: 0.15;
+            opacity: 0.3;
             pointer-events: none;
             background-image: 
-                linear-gradient(rgba(255, 42, 64, 0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 42, 64, 0.1) 1px, transparent 1px),
-                linear-gradient(rgba(255, 42, 64, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 42, 64, 0.05) 1px, transparent 1px);
-            background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-            background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
-            animation: grid-flow 20s linear infinite;
-        }
-
-        @keyframes grid-flow {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(20px, 20px); }
+                linear-gradient(rgba(255, 42, 64, 0.4) 2px, transparent 2px),
+                linear-gradient(90deg, rgba(255, 42, 64, 0.4) 2px, transparent 2px),
+                linear-gradient(rgba(255, 42, 64, 0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 42, 64, 0.2) 1px, transparent 1px);
+            background-size: 80px 80px, 80px 80px, 20px 20px, 20px 20px;
+            background-position: -2px -2px, -2px -2px, -1px -1px, -1px -1px;
         }
 
         @keyframes pulse-bg { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.1); opacity: 1; } }
@@ -402,11 +396,67 @@
                         <div class="card-severity"><div class="dot active"></div><div class="dot warning"></div><div class="dot warning"></div><div class="dot"></div></div>
                     </div>
                 </div>
+                <div class="card" onclick="startAnalysis('Melanggar Sholat', 95, 100, 95)">
+                    <div class="card-icon">🕌</div>
+                    <div class="card-content">
+                        <div class="card-title">Meninggalkan Sholat Wajib</div>
+                        <div class="card-desc">Dosa Besar - Kritical</div>
+                        <div class="card-severity"><div class="dot active"></div><div class="dot active"></div><div class="dot active"></div><div class="dot active"></div></div>
+                    </div>
+                </div>
+                <div class="card" onclick="startAnalysis('Niat Puasa Tidak Ada', 80, 85, 90)">
+                    <div class="card-icon">🌙</div>
+                    <div class="card-content">
+                        <div class="card-title">Lupa/Tidak Niat Puasa</div>
+                        <div class="card-desc">Puasa Tidak Sah</div>
+                        <div class="card-severity"><div class="dot active"></div><div class="dot active"></div><div class="dot active"></div><div class="dot warning"></div></div>
+                    </div>
+                </div>
+                <div class="card" onclick="startAnalysis('Berbicara Kotor', 70, 65, 60)">
+                    <div class="card-icon">🗣️</div>
+                    <div class="card-content">
+                        <div class="card-title">Ucapan Kotor & Kasar</div>
+                        <div class="card-desc">Merusak Pahala Puasa</div>
+                        <div class="card-severity"><div class="dot active"></div><div class="dot active"></div><div class="dot warning"></div><div class="dot"></div></div>
+                    </div>
+                </div>
+                <div class="card" onclick="startAnalysis('Melihat Aurat Wanita', 85, 80, 85)">
+                    <div class="card-icon">👀</div>
+                    <div class="card-content">
+                        <div class="card-title">Pandangan yang Haram</div>
+                        <div class="card-desc">Fitnah Syahwat - Tinggi</div>
+                        <div class="card-severity"><div class="dot active"></div><div class="dot active"></div><div class="dot active"></div><div class="dot warning"></div></div>
+                    </div>
+                </div>
+                <div class="card" onclick="startAnalysis('Ghibah & Mengumpat', 75, 70, 80)">
+                    <div class="card-icon">💬</div>
+                    <div class="card-content">
+                        <div class="card-title">Menggunjing Orang Lain</div>
+                        <div class="card-desc">Memakan Daging Saudara</div>
+                        <div class="card-severity"><div class="dot active"></div><div class="dot active"></div><div class="dot active"></div><div class="dot"></div></div>
+                    </div>
+                </div>
+                <div class="card" onclick="startAnalysis('Puasa Tidak Full', 60, 55, 70)">
+                    <div class="card-icon">📅</div>
+                    <div class="card-content">
+                        <div class="card-title">Tabel Puasa Bolong-Bolong</div>
+                        <div class="card-desc">Konsistensi Rendah</div>
+                        <div class="card-severity"><div class="dot active"></div><div class="dot warning"></div><div class="dot warning"></div><div class="dot"></div></div>
+                    </div>
+                </div>
+                <div class="card" onclick="startAnalysis('Skip Sahur', 50, 40, 55)">
+                    <div class="card-icon">🌅</div>
+                    <div class="card-content">
+                        <div class="card-title">Meninggalkan Sahur</div>
+                        <div class="card-desc">Hilang Berkah Pagi</div>
+                        <div class="card-severity"><div class="dot active"></div><div class="dot warning"></div><div class="dot"></div><div class="dot"></div></div>
+                    </div>
+                </div>
                 <div class="card" onclick="startAnalysis('Batal Sengaja', 100, 100, 100)">
                     <div class="card-icon">⚠️</div>
                     <div class="card-content">
-                        <div class="card-title">Deklarasi Batal</div>
-                        <div class="card-desc">Menyerah tanpa perlawanan</div>
+                        <div class="card-title">Deklarasi Batal Total</div>
+                        <div class="card-desc">Menyerah Tanpa Perlawanan</div>
                         <div class="card-severity"><div class="dot active"></div><div class="dot active"></div><div class="dot active"></div><div class="dot active"></div></div>
                     </div>
                 </div>
