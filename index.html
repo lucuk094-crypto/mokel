@@ -534,6 +534,62 @@
             75% { transform: scale(0.95) rotate(5deg); }
         }
 
+        /* Notification Permission Banner */
+        .notif-banner {
+            background: linear-gradient(135deg, rgba(0, 204, 255, 0.15), rgba(0, 102, 255, 0.15));
+            border: 1px solid rgba(0, 204, 255, 0.3);
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.3s var(--ease);
+        }
+
+        .notif-banner:hover {
+            background: linear-gradient(135deg, rgba(0, 204, 255, 0.2), rgba(0, 102, 255, 0.2));
+            transform: translateY(-2px);
+        }
+
+        .notif-banner-icon {
+            font-size: 1.5rem;
+        }
+
+        .notif-banner-content {
+            flex: 1;
+        }
+
+        .notif-banner-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .notif-banner-desc {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .notif-close {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .notif-close:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+
     </style>
 </head>
 <body>
@@ -556,6 +612,9 @@
                     </button>
                 </div>
             </div>
+
+            <div id="notif-permission-banner" style="display: none;"></div>
+
             <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
                 <div class="status-badge pulse" style="width: fit-content; margin-bottom: clamp(16px, 4vh, 24px);">SISTEM ANALISIS DOSA</div>
                 <h1>Eksekusi<br>Pemokelan</h1>
@@ -879,6 +938,9 @@
         }
         setInterval(updateTimer, 60000);
         updateTimer();
+        
+        // Initialize notification system
+        checkNotificationPermission();
 
         function nav(targetId) {
             document.querySelectorAll('.screen').forEach(el => {
@@ -1140,6 +1202,122 @@
             setTimeout(() => {
                 alert(`🎉 PENCAPAIAN BARU!\n\n${badge.icon} ${badge.name}\n${badge.desc}\n\nSelamat! Teruskan perjuanganmu!`);
             }, 500);
+        }
+
+        // Notification System
+        let notificationPermission = false;
+
+        function checkNotificationPermission() {
+            if (!("Notification" in window)) return;
+            
+            if (Notification.permission === "granted") {
+                notificationPermission = true;
+                scheduleNotifications();
+            } else if (Notification.permission !== "denied") {
+                showNotificationBanner();
+            }
+        }
+
+        function showNotificationBanner() {
+            const banner = document.getElementById('notif-permission-banner');
+            if (!banner) return;
+            
+            const dismissed = localStorage.getItem('notifBannerDismissed');
+            if (dismissed) return;
+            
+            banner.style.display = 'flex';
+            banner.className = 'notif-banner';
+            banner.innerHTML = `
+                <div class="notif-banner-icon">🔔</div>
+                <div class="notif-banner-content">
+                    <div class="notif-banner-title">Aktifkan Reminder</div>
+                    <div class="notif-banner-desc">Dapatkan reminder Sahur & Sholat</div>
+                </div>
+                <div class="notif-close" onclick="event.stopPropagation(); dismissNotificationBanner()">✕</div>
+            `;
+            banner.onclick = requestNotificationPermission;
+        }
+
+        function dismissNotificationBanner() {
+            const banner = document.getElementById('notif-permission-banner');
+            if (banner) banner.style.display = 'none';
+            localStorage.setItem('notifBannerDismissed', 'true');
+        }
+
+        async function requestNotificationPermission() {
+            if (!("Notification" in window)) {
+                alert('Browser Anda tidak mendukung notifikasi');
+                return;
+            }
+            
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                notificationPermission = true;
+                dismissNotificationBanner();
+                scheduleNotifications();
+                showNotification('🎉 Notifikasi Aktif!', 'Kamu akan mendapat reminder Sahur & Sholat');
+            }
+        }
+
+        function showNotification(title, body, icon = '🕌') {
+            if (!notificationPermission) return;
+            
+            new Notification(title, {
+                body: body,
+                icon: 'https://c.termai.cc/i137/16er.jpeg',
+                badge: 'https://c.termai.cc/i137/16er.jpeg',
+                tag: 'mokel-reminder',
+                requireInteraction: false,
+                silent: false
+            });
+            
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+
+        function scheduleNotifications() {
+            if (!notificationPermission) return;
+            
+            // Check every minute for prayer times and sahur
+            setInterval(checkPrayerTimeReminders, 60000);
+            checkPrayerTimeReminders(); // Check immediately
+        }
+
+        function checkPrayerTimeReminders() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            
+            // Sahur reminder (30 min before Fajr, assume Fajr at 04:30)
+            if (hours === 4 && minutes === 0) {
+                showNotification('🌙 Waktunya Sahur!', 'Bangun dan makan sahur sebelum imsak (30 menit lagi)');
+            }
+            
+            // Prayer time reminders (simplified, should use actual prayer times API)
+            const prayerTimes = [
+                { name: 'Subuh', hour: 4, minute: 30 },
+                { name: 'Dzuhur', hour: 12, minute: 0 },
+                { name: 'Ashar', hour: 15, minute: 15 },
+                { name: 'Maghrib', hour: 18, minute: 0 },
+                { name: 'Isya', hour: 19, minute: 15 }
+            ];
+            
+            prayerTimes.forEach(prayer => {
+                if (hours === prayer.hour && minutes === prayer.minute) {
+                    showNotification(`🕌 Waktu Sholat ${prayer.name}`, 'Jangan sampai terlewat, segera sholat!');
+                }
+            });
+            
+            // Motivational quotes (once per day at 07:00)
+            if (hours === 7 && minutes === 0) {
+                const quotes = [
+                    'Puasa bukan hanya menahan lapar, tapi juga menahan hawa nafsu',
+                    'Hari ini adalah kesempatan baru untuk menjadi lebih baik',
+                    'Jaga pandangan, jaga lisan, jaga hati',
+                    'Ramadan adalah bulan penuh berkah, manfaatkan sebaik-baiknya'
+                ];
+                const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+                showNotification('💫 Motivasi Hari Ini', randomQuote);
+            }
         }
 
         function startAnalysis(name, g, r, l) {
