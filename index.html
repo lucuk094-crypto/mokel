@@ -382,6 +382,158 @@
             margin-top: 4px;
         }
 
+        /* Achievement Badges */
+        .achievements {
+            margin: 20px 0;
+            padding: 16px;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+        }
+
+        .achievements-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 12px;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--surface-border);
+            border-radius: 12px;
+            padding: 12px 8px;
+            text-align: center;
+            transition: all 0.3s var(--ease);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .badge.unlocked {
+            background: rgba(0, 255, 102, 0.1);
+            border-color: rgba(0, 255, 102, 0.3);
+            box-shadow: 0 4px 12px rgba(0, 255, 102, 0.2);
+        }
+
+        .badge.unlocked::before {
+            content: '✨';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 0.8rem;
+            animation: sparkle 2s infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .badge.locked {
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+
+        .badge-icon {
+            font-size: 2rem;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .badge-name {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .badge-desc {
+            font-size: 0.55rem;
+            color: var(--text-secondary);
+        }
+
+        /* Streak Display */
+        .streak-banner {
+            background: linear-gradient(135deg, rgba(255, 184, 0, 0.2), rgba(255, 120, 0, 0.2));
+            border: 2px solid rgba(255, 184, 0, 0.4);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .streak-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        .streak-banner.mega {
+            background: linear-gradient(135deg, rgba(0, 255, 102, 0.2), rgba(0, 204, 255, 0.2));
+            border-color: rgba(0, 255, 102, 0.6);
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 102, 0.4); }
+            50% { box-shadow: 0 0 40px rgba(0, 255, 102, 0.6); }
+        }
+
+        .streak-number {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #ffb800;
+            line-height: 1;
+            text-shadow: 0 2px 20px rgba(255, 184, 0, 0.6);
+        }
+
+        .streak-banner.mega .streak-number {
+            color: var(--safe);
+            text-shadow: 0 2px 20px rgba(0, 255, 102, 0.6);
+        }
+
+        .streak-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 8px;
+        }
+
+        .streak-fire {
+            font-size: 2rem;
+            animation: fire-flicker 1.5s infinite;
+        }
+
+        @keyframes fire-flicker {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(-5deg); }
+            75% { transform: scale(0.95) rotate(5deg); }
+        }
+
     </style>
 </head>
 <body>
@@ -614,6 +766,8 @@
             <h2>Kalender Puasa Ramadan</h2>
             <p class="subtitle">Track perjalanan ibadahmu selama 30 hari</p>
 
+            <div id="streak-display"></div>
+
             <div class="tracker-stats">
                 <div class="tracker-stat">
                     <div class="tracker-stat-val" id="tracker-clean">0</div>
@@ -627,6 +781,13 @@
                     <div class="tracker-stat-val" id="tracker-progress">0%</div>
                     <div class="tracker-stat-lbl">Progress</div>
                 </div>
+            </div>
+
+            <div class="achievements" id="achievements-section">
+                <div class="achievements-title">
+                    🏆 Pencapaian
+                </div>
+                <div class="badge-grid" id="badges-container"></div>
             </div>
 
             <div id="tracker-container" style="flex: 1; overflow-y: auto;"></div>
@@ -820,6 +981,38 @@
             let violationDays = 0;
             let pastDays = 0;
             
+            // Calculate streak
+            let currentStreak = 0;
+            let longestStreak = 0;
+            let tempStreak = 0;
+            
+            // Sort by date and calculate streaks
+            const sortedData = [...data].sort((a, b) => a.date - b.date);
+            for (let i = 0; i < sortedData.length; i++) {
+                const day = sortedData[i];
+                const isPast = day.date < new Date();
+                
+                if (day.status === 'clean' && isPast) {
+                    tempStreak++;
+                    if (tempStreak > longestStreak) longestStreak = tempStreak;
+                } else if (day.status === 'violation' || (isPast && day.status === 'today')) {
+                    tempStreak = 0;
+                }
+                
+                // Current streak (from today backwards)
+                if (day.status === 'today' || !isPast) break;
+            }
+            
+            // Calculate current streak from end
+            for (let i = sortedData.length - 1; i >= 0; i--) {
+                const day = sortedData[i];
+                if (day.status === 'clean') {
+                    currentStreak++;
+                } else if (day.status === 'violation' || day.status === 'today') {
+                    break;
+                }
+            }
+            
             let html = '<div class="tracker-grid">';
             data.forEach(day => {
                 let statusClass = 'day-box';
@@ -864,10 +1057,89 @@
             
             container.innerHTML = html;
             
+            // Update stats
             document.getElementById('tracker-clean').innerText = cleanDays;
             document.getElementById('tracker-violations').innerText = violationDays;
             const progress = pastDays > 0 ? Math.round((cleanDays / pastDays) * 100) : 0;
             document.getElementById('tracker-progress').innerText = progress + '%';
+            
+            // Render streak
+            renderStreak(currentStreak, longestStreak);
+            
+            // Render badges
+            renderBadges(cleanDays, currentStreak, longestStreak, violationDays);
+        }
+
+        function renderStreak(current, longest) {
+            const container = document.getElementById('streak-display');
+            if (!container) return;
+            
+            const isMega = current >= 7;
+            const fireEmoji = current >= 3 ? '🔥'.repeat(Math.min(Math.floor(current / 3), 5)) : '';
+            
+            container.innerHTML = `
+                <div class="streak-banner ${isMega ? 'mega' : ''}">
+                    <div class="streak-fire">${fireEmoji || '🌟'}</div>
+                    <div class="streak-number">${current}</div>
+                    <div class="streak-label">${current >= 7 ? '🎉 STREAK LUAR BIASA!' : 'Hari Berturut-turut Bersih'}</div>
+                    ${longest > current ? `<div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 8px;">Rekor Tertinggi: ${longest} hari</div>` : ''}
+                </div>
+            `;
+        }
+
+        function renderBadges(cleanDays, streak, longestStreak, violations) {
+            const container = document.getElementById('badges-container');
+            if (!container) return;
+            
+            const badges = [
+                { id: 'first', icon: '🌟', name: 'Pemula', desc: '1 hari bersih', unlock: cleanDays >= 1 },
+                { id: 'week', icon: '⭐', name: 'Semangat', desc: '7 hari bersih', unlock: cleanDays >= 7 },
+                { id: 'half', icon: '🌙', name: 'Separuh Jalan', desc: '15 hari bersih', unlock: cleanDays >= 15 },
+                { id: 'full', icon: '👑', name: 'Juara', desc: '30 hari penuh', unlock: cleanDays >= 30 },
+                { id: 'streak3', icon: '🔥', name: 'Streak 3', desc: '3 hari berturut', unlock: streak >= 3 },
+                { id: 'streak7', icon: '💪', name: 'Kuat', desc: '7 hari berturut', unlock: streak >= 7 },
+                { id: 'perfect', icon: '💎', name: 'Sempurna', desc: 'Tanpa cela', unlock: cleanDays === 30 && violations === 0 },
+                { id: 'warrior', icon: '⚔️', name: 'Pejuang', desc: '10+ hari bersih', unlock: cleanDays >= 10 }
+            ];
+            
+            let html = '';
+            badges.forEach(badge => {
+                html += `
+                    <div class="badge ${badge.unlock ? 'unlocked' : 'locked'}" title="${badge.desc}">
+                        <div class="badge-icon">${badge.icon}</div>
+                        <div class="badge-name">${badge.name}</div>
+                        <div class="badge-desc">${badge.desc}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            
+            // Check for new unlocks and show celebration
+            checkNewBadgeUnlocks(badges);
+        }
+
+        function checkNewBadgeUnlocks(badges) {
+            const unlockedBadges = badges.filter(b => b.unlock);
+            const prevUnlocked = JSON.parse(localStorage.getItem('unlockedBadges') || '[]');
+            
+            unlockedBadges.forEach(badge => {
+                if (!prevUnlocked.includes(badge.id)) {
+                    // Show celebration for new badge
+                    showBadgeCelebration(badge);
+                }
+            });
+            
+            localStorage.setItem('unlockedBadges', JSON.stringify(unlockedBadges.map(b => b.id)));
+        }
+
+        function showBadgeCelebration(badge) {
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+            
+            // Simple alert for now (bisa diganti dengan modal keren nanti)
+            setTimeout(() => {
+                alert(`🎉 PENCAPAIAN BARU!\n\n${badge.icon} ${badge.name}\n${badge.desc}\n\nSelamat! Teruskan perjuanganmu!`);
+            }, 500);
         }
 
         function startAnalysis(name, g, r, l) {
