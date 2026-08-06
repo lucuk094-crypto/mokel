@@ -590,6 +590,121 @@
             transform: scale(1.1);
         }
 
+        /* Stats Charts */
+        .stats-section {
+            margin: 20px 0;
+        }
+
+        .chart-container {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(20px);
+        }
+
+        .chart-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 120px;
+            padding: 8px 0;
+        }
+
+        .bar {
+            flex: 1;
+            background: linear-gradient(180deg, var(--danger), rgba(255, 42, 64, 0.5));
+            border-radius: 6px 6px 0 0;
+            position: relative;
+            min-height: 10px;
+            transition: all 0.3s var(--ease);
+            cursor: pointer;
+        }
+
+        .bar.green {
+            background: linear-gradient(180deg, var(--safe), rgba(0, 255, 102, 0.5));
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+            transform: translateY(-4px);
+        }
+
+        .bar-label {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .bar-value {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .pie-chart {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            position: relative;
+            background: conic-gradient(
+                var(--safe) 0deg,
+                var(--safe) var(--clean-angle),
+                var(--danger) var(--clean-angle),
+                var(--danger) 360deg
+            );
+        }
+
+        .pie-center {
+            position: absolute;
+            inset: 20px;
+            background: var(--bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
     </style>
 </head>
 <body>
@@ -847,6 +962,18 @@
                     🏆 Pencapaian
                 </div>
                 <div class="badge-grid" id="badges-container"></div>
+            </div>
+
+            <div class="stats-section">
+                <div class="chart-container">
+                    <div class="chart-title">📊 Pelanggaran Paling Sering</div>
+                    <div class="bar-chart" id="violation-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">📈 Progress Mingguan</div>
+                    <div class="bar-chart" id="weekly-chart"></div>
+                </div>
             </div>
 
             <div id="tracker-container" style="flex: 1; overflow-y: auto;"></div>
@@ -1280,6 +1407,81 @@
             // Check every minute for prayer times and sahur
             setInterval(checkPrayerTimeReminders, 60000);
             checkPrayerTimeReminders(); // Check immediately
+        }
+
+            // Render charts
+            renderCharts(data);
+        }
+
+        function renderCharts(data) {
+            // Violation frequency chart
+            const history = getHistory();
+            const violationCount = {};
+            
+            history.forEach(item => {
+                violationCount[item.name] = (violationCount[item.name] || 0) + 1;
+            });
+            
+            const topViolations = Object.entries(violationCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            renderViolationChart(topViolations);
+            
+            // Weekly progress chart
+            renderWeeklyChart(data);
+        }
+
+        function renderViolationChart(violations) {
+            const container = document.getElementById('violation-chart');
+            if (!container || violations.length === 0) {
+                if (container) container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; padding: 20px;">Belum ada data</div>';
+                return;
+            }
+            
+            const maxCount = Math.max(...violations.map(v => v[1]));
+            
+            let html = '';
+            violations.forEach(([name, count]) => {
+                const height = (count / maxCount) * 100;
+                const shortName = name.length > 15 ? name.substring(0, 12) + '...' : name;
+                html += `
+                    <div class="bar" style="height: ${height}%;" title="${name}: ${count}x">
+                        <div class="bar-value">${count}</div>
+                        <div class="bar-label">${shortName}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function renderWeeklyChart(data) {
+            const container = document.getElementById('weekly-chart');
+            if (!container) return;
+            
+            // Group by weeks
+            const weeks = [[], [], [], []]; // 4 weeks
+            data.forEach((day, i) => {
+                const weekIndex = Math.floor(i / 7);
+                if (weekIndex < 4) weeks[weekIndex].push(day);
+            });
+            
+            let html = '';
+            weeks.forEach((week, i) => {
+                const cleanDays = week.filter(d => d.status === 'clean').length;
+                const totalDays = week.filter(d => d.status === 'clean' || d.status === 'violation').length;
+                const percentage = totalDays > 0 ? (cleanDays / totalDays) * 100 : 0;
+                
+                html += `
+                    <div class="bar ${percentage > 70 ? 'green' : ''}" style="height: ${percentage}%;" title="Minggu ${i+1}: ${cleanDays}/${totalDays} bersih">
+                        <div class="bar-value">${Math.round(percentage)}%</div>
+                        <div class="bar-label">W${i+1}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
         }
 
         function checkPrayerTimeReminders() {
