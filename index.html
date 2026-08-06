@@ -1318,6 +1318,18 @@
                         💬 Share ke WA
                     </button>
                 </div>
+                
+                <div class="share-actions" style="margin-top: 8px;">
+                    <button class="btn-share" onclick="exportData()">
+                        💾 Backup Data
+                    </button>
+                    <button class="btn-share" onclick="importData()">
+                        📥 Restore Data
+                    </button>
+                    <button class="btn-share" onclick="confirmReset()" style="border-color: var(--danger); color: var(--danger);">
+                        🗑️ Reset Tracker
+                    </button>
+                </div>
             </div>
 
             <div id="tracker-container" style="flex: 1; overflow-y: auto;"></div>
@@ -1417,6 +1429,8 @@
     </button>
 
     <canvas id="export-canvas"></canvas>
+    
+    <input type="file" id="import-file-input" accept=".json" style="display: none;" onchange="handleImportFile(event)">
 
     <script>
         let simData = { name: '', total: 0, guilt: 0, risk: 0, loss: 0 };
@@ -2398,6 +2412,188 @@ ${currentGoal ? `🎯 Target: ${currentGoal.target}` : ''}
             dzikirCount = 0;
             document.getElementById('dzikir-count').innerText = '0';
             playSound('click');
+        }
+
+        // Data Management Features
+        function exportData() {
+            try {
+                const data = {
+                    version: '1.0',
+                    exportDate: new Date().toISOString(),
+                    history: JSON.parse(localStorage.getItem('mokelHistory') || '[]'),
+                    goal: JSON.parse(localStorage.getItem('ramadanGoal') || 'null'),
+                    notes: JSON.parse(localStorage.getItem('dailyNotes') || '[]'),
+                    badges: JSON.parse(localStorage.getItem('unlockedBadges') || '[]'),
+                    settings: {
+                        darkMode: localStorage.getItem('darkMode'),
+                        notifDismissed: localStorage.getItem('notifBannerDismissed')
+                    }
+                };
+                
+                const jsonString = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mokel-backup-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                playSound('success');
+                if (navigator.vibrate) navigator.vibrate(50);
+                alert('💾 Backup berhasil!\n\nFile tersimpan di Downloads.\n\nSimpan file ini untuk restore data nanti.');
+            } catch (error) {
+                playSound('error');
+                alert('❌ Gagal export data: ' + error.message);
+            }
+        }
+
+        function importData() {
+            const input = document.getElementById('import-file-input');
+            if (input) input.click();
+        }
+
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (!data.version || !data.history) {
+                        throw new Error('Format file tidak valid');
+                    }
+                    
+                    const confirm = window.confirm(
+                        `📥 Restore Data?\n\n` +
+                        `File: ${file.name}\n` +
+                        `Export Date: ${new Date(data.exportDate).toLocaleString('id-ID')}\n` +
+                        `History: ${data.history.length} records\n` +
+                        `Notes: ${data.notes?.length || 0} notes\n\n` +
+                        `⚠️ Data saat ini akan ditimpa!\n\n` +
+                        `Lanjutkan?`
+                    );
+                    
+                    if (!confirm) return;
+                    
+                    // Restore data
+                    localStorage.setItem('mokelHistory', JSON.stringify(data.history));
+                    if (data.goal) localStorage.setItem('ramadanGoal', JSON.stringify(data.goal));
+                    if (data.notes) localStorage.setItem('dailyNotes', JSON.stringify(data.notes));
+                    if (data.badges) localStorage.setItem('unlockedBadges', JSON.stringify(data.badges));
+                    if (data.settings?.darkMode) localStorage.setItem('darkMode', data.settings.darkMode);
+                    if (data.settings?.notifDismissed) localStorage.setItem('notifBannerDismissed', data.settings.notifDismissed);
+                    
+                    playSound('success');
+                    showConfetti();
+                    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                    
+                    alert('✅ Restore berhasil!\n\nData telah dipulihkan.\n\nHalaman akan dimuat ulang...');
+                    
+                    setTimeout(() => location.reload(), 1000);
+                } catch (error) {
+                    playSound('error');
+                    alert('❌ Gagal import data:\n\n' + error.message + '\n\nPastikan file backup valid.');
+                }
+            };
+            
+            reader.readAsText(file);
+            event.target.value = ''; // Reset input
+        }
+
+        function confirmReset() {
+            const history = getHistory();
+            
+            const confirm1 = window.confirm(
+                `⚠️ RESET TRACKER RAMADAN?\n\n` +
+                `Data yang akan dihapus:\n` +
+                `• ${history.length} riwayat simulasi\n` +
+                `• Target & goal\n` +
+                `• Catatan harian\n` +
+                `• Badge progress\n\n` +
+                `💡 Tips: Backup dulu sebelum reset!\n\n` +
+                `Lanjutkan reset?`
+            );
+            
+            if (!confirm1) return;
+            
+            const confirm2 = window.confirm(
+                `🚨 KONFIRMASI TERAKHIR\n\n` +
+                `Anda yakin ingin menghapus SEMUA data?\n\n` +
+                `Tindakan ini TIDAK BISA dibatalkan!\n\n` +
+                `Ketik "RESET" untuk konfirmasi.`
+            );
+            
+            if (!confirm2) return;
+            
+            const userInput = prompt('Ketik "RESET" (huruf besar) untuk konfirmasi:');
+            
+            if (userInput === 'RESET') {
+                performReset();
+            } else {
+                alert('❌ Konfirmasi gagal. Reset dibatalkan.');
+            }
+        }
+
+        function performReset() {
+            try {
+                // Backup before reset (auto)
+                const backupData = {
+                    version: '1.0',
+                    exportDate: new Date().toISOString(),
+                    history: JSON.parse(localStorage.getItem('mokelHistory') || '[]'),
+                    goal: JSON.parse(localStorage.getItem('ramadanGoal') || 'null'),
+                    notes: JSON.parse(localStorage.getItem('dailyNotes') || '[]'),
+                    badges: JSON.parse(localStorage.getItem('unlockedBadges') || '[]')
+                };
+                
+                localStorage.setItem('mokelLastBackup', JSON.stringify(backupData));
+                
+                // Clear all data
+                localStorage.removeItem('mokelHistory');
+                localStorage.removeItem('ramadanGoal');
+                localStorage.removeItem('dailyNotes');
+                localStorage.removeItem('unlockedBadges');
+                
+                playSound('success');
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                
+                alert('✅ Reset selesai!\n\n📦 Backup otomatis tersimpan.\n\nHalaman akan dimuat ulang...');
+                
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                playSound('error');
+                alert('❌ Gagal reset: ' + error.message);
+            }
+        }
+
+        function undoReset() {
+            const backup = localStorage.getItem('mokelLastBackup');
+            if (!backup) {
+                alert('❌ Tidak ada backup yang ditemukan.');
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(backup);
+                
+                localStorage.setItem('mokelHistory', JSON.stringify(data.history));
+                if (data.goal) localStorage.setItem('ramadanGoal', JSON.stringify(data.goal));
+                if (data.notes) localStorage.setItem('dailyNotes', JSON.stringify(data.notes));
+                if (data.badges) localStorage.setItem('unlockedBadges', JSON.stringify(data.badges));
+                
+                playSound('success');
+                alert('✅ Data dipulihkan dari backup!\n\nHalaman akan dimuat ulang...');
+                
+                setTimeout(() => location.reload(), 1000);
+            } catch (error) {
+                alert('❌ Gagal restore backup: ' + error.message);
+            }
         }
 
         function checkPrayerTimeReminders() {
