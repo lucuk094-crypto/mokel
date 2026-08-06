@@ -1058,6 +1058,9 @@
                     Inisiasi Simulasi
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </button>
+                <button class="btn btn-outline-safe" onclick="nav('screen-islamic')">
+                    🕌 Panduan Islami
+                </button>
             </div>
         </div>
 
@@ -1320,6 +1323,45 @@
             <div id="tracker-container" style="flex: 1; overflow-y: auto;"></div>
         </div>
 
+        <div id="screen-islamic" class="screen">
+            <div class="top-bar">
+                <button class="btn-icon" onclick="nav('screen-hero')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <div class="status-badge" style="color: var(--safe); background: rgba(0, 255, 102, 0.1); border-color: rgba(0, 255, 102, 0.2);">
+                    PANDUAN ISLAMI
+                </div>
+            </div>
+
+            <h2>🕌 Jadwal Sholat Hari Ini</h2>
+            <div id="prayer-times-container" style="margin: 20px 0;"></div>
+
+            <h2 style="margin-top: 30px;">📿 Counter Dzikir</h2>
+            <div class="chart-container" style="text-align: center;">
+                <div style="font-size: 4rem; font-weight: 900; color: var(--safe); margin: 20px 0;" id="dzikir-count">0</div>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <button class="btn btn-outline-safe" onclick="incrementDzikir()" style="flex: 1; max-width: 200px;">
+                        ➕ Tambah
+                    </button>
+                    <button class="btn" onclick="resetDzikir()" style="flex: 0; background: rgba(255,255,255,0.1); color: #fff;">
+                        🔄
+                    </button>
+                </div>
+                <div style="margin-top: 20px; color: var(--text-secondary); font-size: 0.85rem;">
+                    Target: 33x Subhanallah, Alhamdulillah, Allahu Akbar
+                </div>
+            </div>
+
+            <h2 style="margin-top: 30px;">💫 Doa Harian Ramadan</h2>
+            <div class="note-card" style="margin-top: 16px; cursor: default;">
+                <div class="note-text" style="text-align: center; line-height: 1.8;">
+                    <strong style="font-size: 1.1rem;">اللَّهُمَّ إِنَّكَ عَفُوٌّ تُحِبُّ الْعَفْوَ فَاعْفُ عَنِّي</strong><br><br>
+                    <em>"Allahumma innaka 'afuwwun tuhibbul 'afwa fa'fu 'anni"</em><br><br>
+                    "Ya Allah, sesungguhnya Engkau Maha Pemaaf, Engkau menyukai pemaafan, maka maafkanlah aku."
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Goal Setting Modal -->
@@ -1469,6 +1511,9 @@
         
         // Load theme
         loadTheme();
+        
+        // Load prayer times
+        loadPrayerTimes();
 
         function nav(targetId) {
             document.querySelectorAll('.screen').forEach(el => {
@@ -2279,6 +2324,80 @@ ${currentGoal ? `🎯 Target: ${currentGoal.target}` : ''}
             setTimeout(() => {
                 alert(`🎉 PENCAPAIAN BARU!\n\n${badge.icon} ${badge.name}\n${badge.desc}\n\nSelamat! Teruskan perjuanganmu!`);
             }, 500);
+        }
+
+        // Islamic Content Features
+        let dzikirCount = 0;
+
+        function loadPrayerTimes() {
+            // Simplified prayer times (should use API like Aladhan.com in production)
+            const times = [
+                { name: 'Subuh', time: '04:30', icon: '🌅' },
+                { name: 'Dzuhur', time: '12:00', icon: '☀️' },
+                { name: 'Ashar', time: '15:15', icon: '🌤️' },
+                { name: 'Maghrib', time: '18:00', icon: '🌆' },
+                { name: 'Isya', time: '19:15', icon: '🌙' }
+            ];
+            
+            const container = document.getElementById('prayer-times-container');
+            if (!container) return;
+            
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            
+            let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+            
+            times.forEach((prayer, index) => {
+                const [hours, minutes] = prayer.time.split(':').map(Number);
+                const prayerMinutes = hours * 60 + minutes;
+                const isPassed = currentMinutes > prayerMinutes;
+                const isNext = !isPassed && (index === 0 || currentMinutes > (times[index-1].time.split(':').map(Number)[0] * 60 + times[index-1].time.split(':').map(Number)[1]));
+                
+                html += `
+                    <div class="chart-container" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; ${isNext ? 'border-color: var(--safe); box-shadow: 0 0 20px rgba(0,255,102,0.2);' : ''}">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-size: 1.8rem;">${prayer.icon}</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 1rem; color: ${isNext ? 'var(--safe)' : '#fff'};">${prayer.name}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">${isNext ? 'Sholat Selanjutnya' : (isPassed ? 'Sudah Lewat' : 'Akan Datang')}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 1.3rem; font-weight: 800; color: ${isNext ? 'var(--safe)' : '#fff'};">${prayer.time}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function incrementDzikir() {
+            dzikirCount++;
+            document.getElementById('dzikir-count').innerText = dzikirCount;
+            playSound('click');
+            
+            if (navigator.vibrate) navigator.vibrate(30);
+            
+            // Celebration at milestones
+            if (dzikirCount === 33) {
+                playSound('success');
+                if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                alert('✨ Subhanallah! 33x tercapai!\n\nLanjutkan: 33x Alhamdulillah');
+            } else if (dzikirCount === 66) {
+                playSound('success');
+                alert('✨ Alhamdulillah! 66x tercapai!\n\nLanjutkan: 33x Allahu Akbar');
+            } else if (dzikirCount === 99) {
+                playSound('achievement');
+                showConfetti();
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
+                alert('🎉 Allahu Akbar! 99x SELESAI!\n\nMasya Allah, semoga diterima!\n\nBarokallahu fiik! 💚');
+            }
+        }
+
+        function resetDzikir() {
+            dzikirCount = 0;
+            document.getElementById('dzikir-count').innerText = '0';
+            playSound('click');
         }
 
         function checkPrayerTimeReminders() {
